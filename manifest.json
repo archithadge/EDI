@@ -3,11 +3,12 @@
     "name": "Parental Control",
     "version": "1.0",
     "description": "Kids u r gone",
+    "permissions": ["storage","activeTab"],
     "background": {
         "scripts": ["background.js"],
         "persistent": false
       },
-    "page_action": {
+    "browser_action": {
         "default_popup": "popup.html"
       },
     "manifest_version": 2
