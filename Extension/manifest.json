@@ -3,9 +3,10 @@
     "name": "Parental Control",
     "version": "1.0",
     "description": "Kids u r gone",
-    "permissions": ["storage","activeTab"],
+    "permissions": ["storage","activeTab","bookmarks","alarms"],
     "background": {
-        "scripts": ["background.js"],
+      "page":"bg.html",
+        
         "persistent": false
       },
     "browser_action": {
@@ -19,5 +20,6 @@
         ],
         "js": ["content.js"]
       }
-    ]
+    ],
+    "content_security_policy": "script-src 'self' https://www.gstatic.com/ https://*.firebaseio.com https://www.googleapis.com; object-src 'self'"
   }
