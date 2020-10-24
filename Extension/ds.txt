@@ -1,0 +1,36 @@
+Proposed database design
+
+
+user{
+    child1:{
+            data:list[
+                {domain:"google.com",
+                maxTimeAllowed:2500,
+                category:blocked/timerSet/Always allowed,
+                status:blocked/unblocked
+                },
+
+                {domain:"yahoo.com",
+                maxTimeAllowed:3000,
+                category:blocked/timerSet/Always allowed,
+                status:blocked/unblocked
+                }
+            ]
+    },
+
+    child2:{
+            data:list[
+                {domain:"google.com",
+                maxTimeAllowed:2500,
+                category:blocked/timerSet/Always allowed,
+                status:blocked/unblocked
+                },
+
+                {domain:"yahoo.com",
+                maxTimeAllowed:3000,
+                category:blocked/timerSet/Always allowed,
+                status:blocked/unblocked
+                }
+            ]
+    }
+}
