@@ -2,16 +2,16 @@
   "name": "Parental Control",
   "version": "1.0",
   "description": "Kids u r gone",
-  "permissions": ["storage", "activeTab", "bookmarks", "alarms","webRequest",
+  "permissions": ["tabs","storage", "activeTab", "bookmarks", "alarms","webRequest",
     "webNavigation",
     "webRequestBlocking",
     "management",
     "http://*/*",
     "https://*/*"],
   "background": {
-    "page": "bg.html",
-
+    "scripts":["firebase-app.js","firebase-auth.js","firebase-database.js","update_db.js","background.js"],
     "persistent": true
+    
   },
   "browser_action": {
     "default_popup": "popup.html"
