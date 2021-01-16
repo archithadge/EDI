@@ -32,6 +32,7 @@ firebase.auth().onAuthStateChanged(firebaseUser => {
   });
 
   var logout=document.getElementById("logout");
+  var Analytics=document.getElementById("analytics");
 
   logout.addEventListener('click',e=>{
     firebase.auth().signOut().then(function() {
@@ -43,10 +44,36 @@ firebase.auth().onAuthStateChanged(firebaseUser => {
       
   });
 
+  function timeConversion(sec){
+    var hr=String(Math.floor(sec/3600));
+    var min=String(Math.floor(sec/60));
+    var sc=String(sec%60);
+    return hr+" hr "+min+" min "+sc+"sec";
+
+  }
+
+Analytics.addEventListener('click',e=>{
+  chrome.runtime.sendMessage({ method: "getData", data: "xxx" }, function (res) {
+    // document.getElementById("popupElement1").innerText = res.method;
+    // document.getElementById("popupElement2").innerText = res.data;
+    // document.getElementById("data").innerHTML=String(res.data.TL);
+    // document.getElementById("data").innerHTML="";
+    for(x in res.data.TL){
+      document.getElementById("table1").innerHTML+="<tr><td>"+String(x)+"</td><td>"+String(timeConversion(res.data.TL[x]))+"</td>"+"<td>"+String(timeConversion(res.data.TS[x]))+"</td></tr>"
+    }
+
+    for(x in res.data.Blocked){
+      document.getElementById("table2").innerHTML+="<tr><td>"+String(x)+"</tr></td>";
+    }
+    console.log(res);
+// return true;
+});
+})
+
 port.postMessage("Connected");
 
 port.postMessage("Connected");
-port.onMessage.addListener(function(tabs_data){
-    // print_info(tabs_data);
-});
+
+
+
   

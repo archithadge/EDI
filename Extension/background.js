@@ -1,10 +1,13 @@
 
-console.log("*****************background.js***************")
+// console.log("*****************background.js***************")
 var loggedIn = false;
 var BlockedSites = {}
 var timeLimit={};
 var timeSpent={};
 var DateWiseHistory={}
+var firebaseToLocalUpdateInterval=5000;
+var localToFirebaseUpdateInterval=10000;
+var tabsDataInterval=5000;
 var database = firebase.database();
 
 
@@ -15,12 +18,10 @@ firebase.database().ref('/users/' + userID + "/TimeLimitSet").once('value').then
         timeSpent=snapshot.val().TimeSpent;
 
     }
-    // console.log("DONE1",TimeLimitSetSites);
+    // // console.log("DONE1",TimeLimitSetSites);
 });
 
 firebase.database().ref('users/' + userID+'/datewiseUsage/'+today).once('value').then((snapshot) => {
-    // TimeLimitSetSites = snapshot.val();
-    // console.log("DONE1",TimeLimitSetSites);
     if(snapshot.val()==null){
         DateWiseHistory={};
     }
@@ -28,9 +29,6 @@ firebase.database().ref('users/' + userID+'/datewiseUsage/'+today).once('value')
         DateWiseHistory=snapshot.val();
     }
 });
-
-
-
 
 
 
@@ -44,27 +42,19 @@ function domainForDB(url) {
 
 //Function to get data from Current tabs
  function  getTabsData() {
-    // var tabs_data = {};
     chrome.tabs.query({}, (tabs) => {
         for (var i = 0; i < tabs.length; i++) {
-            console.log(domainForDB(tabs[i].url));
-            if(domainForDB(tabs[i].url) in timeLimit){
-                console.log("REACHED HERE",domainForDB(tabs[i].url));
+            console.log(tabs[i].url,(domainForDB(tabs[i].url) in BlockedSites)==false);
+            if((domainForDB(tabs[i].url) in timeLimit && timeSpent[domainForDB(tabs[i].url)]<timeLimit[domainForDB(tabs[i].url)]) && (domainForDB(tabs[i].url) in BlockedSites)==false){
                 timeSpent[domainForDB(tabs[i].url)]=timeSpent[domainForDB(tabs[i].url)]+5;
-                // console.log(TimeLimitSetSites);
             }
-            // if(domainForDB(tabs[i].url) in TimeLimitSetSites){
-            //     console.log("YES",domainForDB(tabs[i].url));
-            //     TimeLimitSetSites[domainForDB(tabs[i].url)].TS=TimeLimitSetSites[domainForDB(tabs[i].url)].TS+5;
-            // }
             if((domainForDB(tabs[i].url) in DateWiseHistory)==false){
                 DateWiseHistory[domainForDB(tabs[i].url)]=5;
             }
-            else{
+            else if((((domainForDB(tabs[i].url) in timeLimit && timeSpent[domainForDB(tabs[i].url)]<timeLimit[domainForDB(tabs[i].url)])) || (domainForDB(tabs[i].url) in timeLimit)==false) && (domainForDB(tabs[i].url) in BlockedSites)==false){
                 DateWiseHistory[domainForDB(tabs[i].url)]=DateWiseHistory[domainForDB(tabs[i].url)]+5;
             }
         }
-        // console.log("Done");
     });
     
 }
@@ -72,30 +62,30 @@ function domainForDB(url) {
 
 function updateFirebase(){
     firebase.database().ref('users/' + userID+'/TimeLimitSet/TimeSpent').set(timeSpent);
-    console.log("DODODOD");
     firebase.database().ref('users/' + userID+'/datewiseUsage/'+today).set(DateWiseHistory);
 }
 
-// setInterval(updateLocalFromFirebase,2000);
-setInterval(getTabsData,5000);
-setInterval(updateFirebase,10000);
-setInterval(updateLocalFromFirebase2,5000);
+
+setInterval(getTabsData,tabsDataInterval);
+setInterval(updateFirebase,localToFirebaseUpdateInterval);
+setInterval(updateLocalFromFirebase2,firebaseToLocalUpdateInterval);
 
 function updateLocalFromFirebase2() {
     firebase.database().ref('/users/' + userID + "/blockedSites").once('value').then((snapshot) => {
-        BlockedSites = snapshot.val();
+        console.log(snapshot.val());
+        if(snapshot.val()==null){
+            BlockedSites={};
+        }
+        else{
+            BlockedSites = snapshot.val();
+        }
     });
 
     firebase.database().ref('/users/' + userID + "/TimeLimitSet").once('value').then((snapshot) => {
         timeLimit = snapshot.val().TimeLimit;
-        // timeSpent=snapshot.val().TimeSpent;
     });
 
-    // firebase.database().ref('users/' + userID+'/datewiseUsage/'+today).once('value').then((snapshot) => {
-    //     DateWiseHistory = snapshot.val();
-    // });
 
-    // console.log(BlockedSites, TimeLimitSetSites);
 }
 
 
@@ -105,7 +95,12 @@ function updateLocalFromFirebase2() {
 //Function to update local dictionaries from firebase
 function updateLocalFromFirebase() {
     firebase.database().ref('/users/' + userID + "/blockedSites").once('value').then((snapshot) => {
-        BlockedSites = snapshot.val();
+        if(snapshot.val()==null){
+            BlockedSites={};
+        }
+        else{
+            BlockedSites = snapshot.val();
+        }
     });
 
     firebase.database().ref('/users/' + userID + "/TimeLimitSet").once('value').then((snapshot) => {
@@ -114,10 +109,14 @@ function updateLocalFromFirebase() {
     });
 
     firebase.database().ref('users/' + userID+'/datewiseUsage/'+today).once('value').then((snapshot) => {
-        DateWiseHistory = snapshot.val();
+        if(snapshot.val()==null){
+            DateWiseHistory={};
+        }
+        else{
+            DateWiseHistory=snapshot.val();
+        }
     });
 
-    // console.log(BlockedSites, TimeLimitSetSites);
 }
 
 
@@ -133,21 +132,23 @@ function updateLocalFromFirebase() {
 
 //Inter-Script Communication
 chrome.extension.onConnect.addListener(function (port) {
-    //console.log("Connected with pop");
+    //// console.log("Connected with pop");
     port.onMessage.addListener(function (msg) {
         console.log("Message is:- " + msg);
         if (msg === "Connected"){
             // port.postMessage(tabs_data);
-            console.log("Connected");
+            // console.log("Connected");
 
         }
         if (msg === "Logged In") {
             loggedIn = true;
             // updateFilters(true);
+            updateLocalFromFirebase2();
         }
         if (msg === "Logged Out") {
             loggedIn = false
             // updateFilters(false);
+            updateLocalFromFirebase2();
         }
         if (msg === "Status") {
             if (loggedIn)
@@ -155,14 +156,25 @@ chrome.extension.onConnect.addListener(function (port) {
             else
                 port.postMessage("NO");
         }
+        
     })
 });
 
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    console.log("REquest",request);
+    if (request.method == "getData") {
+        console.log(request.data);
+        sendResponse({ data:{TL:timeLimit,TS:timeSpent,Blocked:BlockedSites} })
+    }
+});
 
 //Blocking Requests
 chrome.webRequest.onBeforeRequest.addListener(
     function (details) {
-        console.log()
+        // console.log()
+        if(domainForDB(details.url) in BlockedSites){
+            return {cancel:true};
+        }
         if(domainForDB(details.url) in timeLimit){
             if(timeSpent[domainForDB(details.url)]>=timeLimit[domainForDB(details.url)]){
                 return {cancel:true};
@@ -173,7 +185,7 @@ chrome.webRequest.onBeforeRequest.addListener(
     ["blocking"]);
 
 
-// console.log("*****************background.js***************")
+// // console.log("*****************background.js***************")
 // var loggedIn = false;
 // var BlockedSites = {}
 // var TimeLimitSetSites = {}
@@ -187,12 +199,12 @@ chrome.webRequest.onBeforeRequest.addListener(
 //         TimeLimitSetSites = snapshot.val();
 
 //     }
-//     console.log("DONE1",TimeLimitSetSites);
+//     // console.log("DONE1",TimeLimitSetSites);
 // });
 
 // firebase.database().ref('users/' + userID+'/datewiseUsage/'+today).once('value').then((snapshot) => {
 //     // TimeLimitSetSites = snapshot.val();
-//     // console.log("DONE1",TimeLimitSetSites);
+//     // // console.log("DONE1",TimeLimitSetSites);
 //     if(snapshot.val()==null){
 //         DateWiseHistory={};
 //     }
@@ -219,14 +231,14 @@ chrome.webRequest.onBeforeRequest.addListener(
 //     // var tabs_data = {};
 //     chrome.tabs.query({}, (tabs) => {
 //         for (var i = 0; i < tabs.length; i++) {
-//             console.log(domainForDB(tabs[i].url));
+//             // console.log(domainForDB(tabs[i].url));
 //             if(domainForDB(tabs[i].url) in TimeLimitSetSites.TimeLimit){
-//                 console.log("REACHED HERE",domainForDB(tabs[i].url));
+//                 // console.log("REACHED HERE",domainForDB(tabs[i].url));
 //                 TimeLimitSetSites.TimeSpent[domainForDB(tabs[i].url)]=TimeLimitSetSites.TimeSpent[domainForDB(tabs[i].url)]+5;
-//                 console.log(TimeLimitSetSites);
+//                 // console.log(TimeLimitSetSites);
 //             }
 //             // if(domainForDB(tabs[i].url) in TimeLimitSetSites){
-//             //     console.log("YES",domainForDB(tabs[i].url));
+//             //     // console.log("YES",domainForDB(tabs[i].url));
 //             //     TimeLimitSetSites[domainForDB(tabs[i].url)].TS=TimeLimitSetSites[domainForDB(tabs[i].url)].TS+5;
 //             // }
 //             if((domainForDB(tabs[i].url) in DateWiseHistory)==false){
@@ -236,7 +248,7 @@ chrome.webRequest.onBeforeRequest.addListener(
 //                 DateWiseHistory[domainForDB(tabs[i].url)]=DateWiseHistory[domainForDB(tabs[i].url)]+5;
 //             }
 //         }
-//         // console.log("Done");
+//         // // console.log("Done");
 //     });
     
 // }
@@ -244,7 +256,7 @@ chrome.webRequest.onBeforeRequest.addListener(
 
 // function updateFirebase(){
 //     firebase.database().ref('users/' + userID+'/TimeLimitSet').set(TimeLimitSetSites);
-//     console.log("DODODOD");
+//     // console.log("DODODOD");
 //     firebase.database().ref('users/' + userID+'/datewiseUsage/'+today).set(DateWiseHistory);
 // }
 
@@ -271,7 +283,7 @@ chrome.webRequest.onBeforeRequest.addListener(
 //         DateWiseHistory = snapshot.val();
 //     });
 
-//     // console.log(BlockedSites, TimeLimitSetSites);
+//     // // console.log(BlockedSites, TimeLimitSetSites);
 // }
 
 
@@ -287,12 +299,12 @@ chrome.webRequest.onBeforeRequest.addListener(
 
 // //Inter-Script Communication
 // chrome.extension.onConnect.addListener(function (port) {
-//     //console.log("Connected with pop");
+//     //// console.log("Connected with pop");
 //     port.onMessage.addListener(function (msg) {
-//         console.log("Message is:- " + msg);
+//         // console.log("Message is:- " + msg);
 //         if (msg === "Connected"){
 //             // port.postMessage(tabs_data);
-//             console.log("Connected");
+//             // console.log("Connected");
 
 //         }
 //         if (msg === "Logged In") {
@@ -316,7 +328,7 @@ chrome.webRequest.onBeforeRequest.addListener(
 // //Blocking Requests
 // chrome.webRequest.onBeforeRequest.addListener(
 //     function (details) {
-//         console.log()
+//         // console.log()
 //         if(domainForDB(details.url) in TimeLimitSetSites){
 //             // if(TimeLimitSetSites[domainForDB(details.url)].TL<=TimeLimitSetSites[domainForDB(details.url)].TS){
 //             //     return {cancel:true};
