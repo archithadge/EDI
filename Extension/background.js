@@ -2,7 +2,7 @@
 // console.log("*****************background.js***************")
 var loggedIn = false;
 var BlockedSites = {}
-var timeLimit={};
+let timeLimit={"abc":null};
 var timeSpent={};
 var DateWiseHistory={}
 var firebaseToLocalUpdateInterval=5000;
@@ -172,6 +172,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 chrome.webRequest.onBeforeRequest.addListener(
     function (details) {
         // console.log()
+        console.log("URL",details.url);
         if(domainForDB(details.url) in BlockedSites){
             return {cancel:true};
         }
